@@ -21,8 +21,14 @@ library(rpart)
 # Data set is from Keggle, 
 # thanks for author fedesoriano
 
-file_name <- "Stroke_data.csv"
+## Load dataset from local source
+#file_name <- "Stroke_data.csv"
+#stroke_data <- read_csv(file_name)
+
+# Load dataset from git repo
+file_name <- "https://raw.githubusercontent.com/AdamMarkSzabo/DataScience/main/Stroke_data.csv"
 stroke_data <- read_csv(file_name)
+
 
 set.seed(10, sample.kind="Rounding")
 

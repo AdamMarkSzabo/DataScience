@@ -2,7 +2,9 @@
 title: "Stroke Prediction"
 author: "Adam"
 date: '2022-03-07'
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -33,7 +35,12 @@ library(rpart)
 # Data set is from Keggle, 
 # thanks for author fedesoriano
 
-file_name <- "Stroke_data.csv"
+#Loading data from local source
+#file_name <- "Stroke_data.csv"
+#stroke_data <- read_csv(file_name)
+
+# loading data from git repo
+file_name <- "https://raw.githubusercontent.com/AdamMarkSzabo/DataScience/main/Stroke_data.csv"
 stroke_data <- read_csv(file_name)
 
 set.seed(10, sample.kind="Rounding")
