@@ -2,9 +2,7 @@
 title: "Capstone MovieLens"
 author: "Adam"
 date: '2022-03-05'
-output:
-  pdf_document: default
-  html_document: default
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
