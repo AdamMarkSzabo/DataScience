@@ -1,0 +1,296 @@
+---
+title: "Stroke Prediction"
+author: "Adam"
+date: '2022-03-07'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+if(!require(readxl)) install.packages("readxl", repos = "http://cran.us.r-project.org")
+if(!require(randomForest)) install.packages("randomForest", repos = "http://cran.us.r-project.org")
+if(!require(ROSE)) install.packages("ROSE", repos = "http://cran.us.r-project.org")
+if(!require(gridExtra)) install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+if(!require(rpart)) install.packages("rpart", repos = "http://cran.us.r-project.org")
+if(!require(tinytex)) install.packages("tinytex") # for pdf
+
+library(tinytex)
+library(dslabs)
+library(tidyverse)    # includes readr
+library(readxl)
+library(caret)
+library(data.table)
+library(randomForest)
+#install.packages("ROSE")
+library(ROSE)
+library(gridExtra)
+library(rpart)
+
+# Data set is from Keggle, 
+# thanks for author fedesoriano
+
+file_name <- "Stroke_data.csv"
+stroke_data <- read_csv(file_name)
+
+set.seed(10, sample.kind="Rounding")
+```
+
+## Stroke Prediction
+
+This project is created by using fedesoriano's Stroke data set from Keggle. 
+Description: 
+"According to the World Health Organization (WHO) stroke is the 2nd leading cause of death globally, responsible for approximately 11% of total deaths.
+This data set is used to predict whether a patient is likely to get stroke based on the input parameters like gender, age, various diseases, and smoking status. Each row in the data provides relevant information about the patient."
+
+I chose this project because I can sadly relate this by real-life experience, and I am interested in prediction of diseases since it is probably playing a big part in well-being and health assessing in the future. 
+
+## Exploration
+
+Structure of the Data set: 
+
+```{r structure}
+str(stroke_data)
+```
+
+
+All stroke cases found in the data set and their percentage in regard of the observations: 
+```{r}
+sum(stroke_data$stroke)
+mean(stroke_data$stroke)
+```
+
+Summary of the data:
+
+```{r}
+summary(stroke_data)
+```
+
+We can see a few interesting things here. Since "hypertension" and "heart_disease" are numeric values but have only 0 or 1 as someone having heart disease or not, there is no in-between. It is better to represent them as factors so it won't interfere with calculations and won't be that confusing. Also changing the stroke column to be more clear and also be a factor since it is a classification problem (having stroke or not). BMI (body mass ratio) that is used to create an overall overview of the patients being over-weight, under-weight etc... Here BMI should be numeric for better analysis so it is a good idea to convert it as well. I removed the id column since it won't do any good in our prediction model and I don't need it overall. 
+
+```{r summary}
+data <- stroke_data %>% 
+  mutate(bmi = as.numeric(bmi), hypertension = as.factor(hypertension), heart_disease = as.factor(heart_disease), stroke = as.factor(ifelse(stroke == 1, "YES", "NO"))) %>% 
+  na.omit(bmi) %>%
+  mutate_if(is.character, as.factor)%>%
+  dplyr::select(!id)
+
+is.null(data)
+summary(data)
+```
+
+In my theory age, bmi and glucose level might be a big factor in predicting stroke so I plot them.
+
+```{r}
+data_stroke <- data %>% filter(stroke == "YES")
+
+par(mfrow=c(2,2))
+p1 <- qplot(data$age, data$bmi, xlab = "Age", ylab ="BMI")
+p2 <- qplot(data_stroke$age, data_stroke$bmi, xlab = "Age with stroke", ylab ="BMI with stroke")
+p3 <- qplot(data$age, data$avg_glucose_level, xlab = "Age", ylab ="Glucose level")
+p4 <- qplot(data_stroke$age, data_stroke$avg_glucose_level, xlab = "Age with stroke", ylab ="Glucose level with stroke")
+
+data %>% group_by(stroke) %>% summarise(avg_bmi = mean(bmi))
+
+
+
+grid.arrange(p1, p2, ncol=2)
+grid.arrange(p3, p4, ncol=2)
+```
+
+Data seems very diverse since there is no good indication of the stroke but the chance might increase by cooperation of variables. Checking the correlations of numeric values: 
+
+```{r}
+df <- data %>% 
+  mutate(stroke = as.numeric(stroke))%>% 
+  select(stroke,age,avg_glucose_level,bmi)
+cor_matrix <- cor(df$stroke, df)
+cor_matrix
+```
+
+From the matrix it is visible that the age having the highest correlation but it is still low. 
+
+## Plots of categorical variables
+
+Stroke in gender:
+
+```{r}
+data %>% filter(stroke == "YES" ) %>% 
+  group_by(gender) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = gender, y = n, fill = gender)) +
+  geom_col() +
+  geom_text(aes(label = n), vjust = 3, colour = "black")
+```
+
+Stroke in relationship status: 
+(note this contains younger patients too)
+```{r}
+data %>% filter(stroke == "YES" ) %>%
+  group_by(ever_married) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(ever_married, n, fill = ever_married))+
+  geom_col() + 
+  geom_text(aes(label = n), vjust = -0.5, colour = "black")
+```
+
+Stroke in smoking habits:
+
+```{r}
+stroke_data %>% 
+  filter(stroke == 1) %>%
+  group_by(smoking_status) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(smoking_status, n, fill = smoking_status)) + 
+  xlab("Smoking status") +
+  geom_col() + 
+  geom_text(aes(label = n), vjust = 3, colour = "white")
+```
+
+Stroke in Urban or rural environment:
+
+```{r}
+data %>% filter(stroke == "YES" ) %>% 
+  group_by(Residence_type) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = Residence_type, y = n, fill = Residence_type)) +
+  xlab("Residence type") +
+  geom_col() +
+  geom_text(aes(label = n), vjust = 3, colour = "black")
+```
+
+Job type:
+
+```{r}
+data %>% filter(stroke == "YES") %>% 
+  group_by(work_type) %>% 
+  summarise(n = n()) %>%
+  ggplot(aes(x = work_type, y = n, fill = work_type)) +
+  xlab("Work Type") +
+  geom_col() + 
+  geom_text(aes(label = n), vjust = -0.5, colour = "black")
+```
+
+
+## Partitioning Data and building a model
+
+```{r}
+test_index <- createDataPartition(y = data$stroke, times = 1, p = 0.2, list = FALSE)
+train_set <- data[-test_index,]
+test_set <- data[test_index,]
+```
+
+Using General Logistic Regression model 
+
+```{r}
+options(warn=-1)
+train_glm <- train(stroke ~ ., data = train_set, method = 'glm', family= 'binomial')
+pred_glm <- predict(train_glm, test_set)
+cm_glm <- confusionMatrix(pred_glm, test_set$stroke)
+cm_glm
+```
+
+As we can see the model gives very high accuracy. This is because the data set having actually around 4% of stroke cases. The model generally predicting "NO" for every case to reach this accuracy. This introduce false negative for the actually positive cases leading a 0 or close to zero Specificity value. This is bad because it means it is not able to detect positive cases. In this case not trying means failing. 
+
+Checking model with the usage of Random Forest: 
+
+```{r}
+train_rf <- randomForest(stroke ~., data = train_set)
+pred_rf <- predict(train_rf, test_set)
+cm_rf <- confusionMatrix(pred_rf, test_set$stroke)
+cm_rf
+```
+
+It performs similarly as the previous model leading balanced accuracy of 0.5 that basically means no prediction just guessing. 
+
+The problem originates the logic, where both model just working with a very low percentage of positive stroke data thus it just working towards high accuracy given the train_set. 
+
+For improving a model that actually tries to guess positive cases the set need to be altered in order to boost the models confidence a bit. In theory it should improve the specificity (True positive for stroke), but given the previous plots and correlation values, the accuracy and sensitivity probably will decrease. 
+The aim now is to increase the specificity and maximizing the balanced accuracy. 
+
+Introducing ROSE library containing ovun sampling method. "OVUN" stands for over-sampling minority examples (stroke positive) and under-sampling majority examples (stroke negative). In our case the best is to use the combination of these two cases.
+
+```{r}
+ovun_set <- ovun.sample(stroke~.,
+                    data = train_set,
+                    method = "both",
+                    N = 1000,
+                    p = 0.5,
+                    seed = 10)$data
+```
+
+According to the best votes by the forest the decision tree is constructed:
+
+```{r}
+fit <- rpart(stroke ~ ., data = ovun_set)
+plot(fit, margin = 0.1)
+text(fit,  cex = 0.6, minlength = 4)
+```
+
+
+Also Introducing a control parameter that will perform 10 folds validation with 10 repetition.
+
+```{r}
+control <- trainControl(method = "repeatedcv",
+                   number = 10,
+                   repeats = 10,
+                   seed=10)
+```
+
+Tuning the mtry for best value:
+
+```{r}
+x <- seq(1,11,2)
+acc_mtry <- lapply(x, function(xs){
+  train(stroke ~ ., method = "rf", 
+        data = {ovun.sample(stroke~.,
+                            data = train_set,
+                            method = "both",
+                            N = 1000,
+                            p = 0.5,
+                            seed = 10)$data},
+        tuneGrid = data.frame(mtry = xs))$results$Accuracy
+})
+plot(x,acc_mtry)
+```
+After value 5 the curve dumped and stayed approximately on the same accuracy level. 
+
+With these the previous models can be improved.
+
+Improved GLM:
+
+```{r}
+options(warn=-1)
+train_glm <- train(stroke ~ ., data = ovun_set, method = 'glm', family= 'binomial')
+pred_glm <- predict(train_glm, test_set)
+cm_glm <- confusionMatrix(pred_glm, test_set$stroke)
+cm_glm
+```
+
+Improved Random forest model:
+
+```{r}
+model_rf <- randomForest(stroke~.,
+                       data = ovun_set,
+                       mtry=x[which.max(acc_mtry)],
+                       trControl = control,
+                       ntrees = 500,
+                       seed = 10)
+
+pred_rf <- predict(model_rf, test_set)
+cm_rf <- confusionMatrix(pred_rf, test_set$stroke)
+cm_rf
+```
+
+## Conclusion
+
+The models shown above are increasing the prediction chance of the specificity (True positive rate) even is the overall accuracy is decreased. Random forest and generalized logistical regression used to form the models.
+
+GLM model performed better than the random forest in overall prediction. It did predict more False positive but it did recognize more positive cases and have a better specificity and balanced and overall-accuracy. It would help more in detecting stroke. 
+
+Overall the data set seems a bit small, with larger set a better, more confident model could be set up. 
+
+In case of disease in my opinion it is better to have a higher specificity and having a better rate in pre detection of stroke. How ever the stroke is instant and there is more elements, more predictors that is added to the chance that is not presented in the data set. BUT, it might serve a good indicator for the people to watch their health even in later ages. 
