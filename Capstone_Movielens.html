@@ -256,6 +256,7 @@ if (window.hljs) {
 
 
 
+
 <style type="text/css">
 .main-container {
   max-width: 940px;
@@ -276,6 +277,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -394,7 +398,12 @@ as a summary table.</p>
 <pre class="r"><code>mu_hat &lt;- mean(train_set$rating)
 rmse_mu &lt;- RMSE(test_set$rating, mu_hat)
 
-rmse_resTable &lt;- tibble(method = &quot;Predicting by average&quot;, RMSE = rmse_mu)</code></pre>
+rmse_resTable &lt;- tibble(method = &quot;Predicting by average&quot;, RMSE = rmse_mu)
+rmse_resTable</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   method                 RMSE
+##   &lt;chr&gt;                 &lt;dbl&gt;
+## 1 Predicting by average  1.06</code></pre>
 </div>
 <div id="movies-effect-on-prediction" class="section level2">
 <h2>Movies effect on prediction</h2>
@@ -419,7 +428,13 @@ prediction. This will have a minimal effect for accuracy since the data
 set itself is very big.</p>
 <p>Checking its RMSE and plugging it into the tibble for comparison</p>
 <pre class="r"><code>rmse_mui &lt;- RMSE(test_set$rating, pred_mui)
-rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Movie effect on prediction&quot;, RMSE =  rmse_mui)</code></pre>
+rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Movie effect on prediction&quot;, RMSE =  rmse_mui)
+rmse_resTable</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   method                      RMSE
+##   &lt;chr&gt;                      &lt;dbl&gt;
+## 1 Predicting by average      1.06 
+## 2 Movie effect on prediction 0.944</code></pre>
 </div>
 <div id="users-effect-on-prediction" class="section level2">
 <h2>Users effect on prediction</h2>
@@ -434,7 +449,14 @@ pred_usr &lt;- test_set %&gt;%
 rmse_usr &lt;- RMSE(test_set$rating,pred_usr)</code></pre>
 <p>Adding and comparing to the table:</p>
 <pre class="r"><code>rmse_mov_usr &lt;- RMSE(test_set$rating,pred_usr)
-rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Users effect on prediction&quot;, RMSE =  rmse_usr)</code></pre>
+rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Users effect on prediction&quot;, RMSE =  rmse_usr)
+rmse_resTable</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   method                      RMSE
+##   &lt;chr&gt;                      &lt;dbl&gt;
+## 1 Predicting by average      1.06 
+## 2 Movie effect on prediction 0.944
+## 3 Users effect on prediction 0.979</code></pre>
 <p>Similarly as the movies users had a good effect on prediction
 accuracy</p>
 </div>
@@ -487,7 +509,15 @@ pred_genres &lt;- test_set %&gt;%
 if(sum(is.na(pred_genres))) pred_genres[is.na(pred_genres)] &lt;- mu_hat</code></pre>
 <p>Checking RMSE and adding this to the table too.</p>
 <pre class="r"><code>rmse_gen &lt;- RMSE(test_set$rating, pred_genres)
-rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Genres effect on prediction&quot;, RMSE =  rmse_gen)</code></pre>
+rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Genres effect on prediction&quot;, RMSE =  rmse_gen)
+rmse_resTable</code></pre>
+<pre><code>## # A tibble: 4 x 2
+##   method                       RMSE
+##   &lt;chr&gt;                       &lt;dbl&gt;
+## 1 Predicting by average       1.06 
+## 2 Movie effect on prediction  0.944
+## 3 Users effect on prediction  0.979
+## 4 Genres effect on prediction 1.02</code></pre>
 <p>I wanted to check if users have some impact on these genre
 combinations so I checked it but did not add to the table:</p>
 <pre class="r"><code>genres_effect_bad &lt;- train_set %&gt;%  
@@ -542,7 +572,16 @@ rmse_mov_usr &lt;- RMSE(test_set$rating, pred_mov_usr)
 rmse_mov_usr</code></pre>
 <pre><code>## [1] 0.8862238</code></pre>
 <p>Adding results to the table:</p>
-<pre class="r"><code>rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Movie + User effect on prediction&quot;, RMSE =  rmse_mov_usr)</code></pre>
+<pre class="r"><code>rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Movie + User effect on prediction&quot;, RMSE =  rmse_mov_usr)
+rmse_resTable</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   method                             RMSE
+##   &lt;chr&gt;                             &lt;dbl&gt;
+## 1 Predicting by average             1.06 
+## 2 Movie effect on prediction        0.944
+## 3 Users effect on prediction        0.979
+## 4 Genres effect on prediction       1.02 
+## 5 Movie + User effect on prediction 0.886</code></pre>
 </div>
 <div id="regularisation" class="section level2">
 <h2>Regularisation</h2>
@@ -578,7 +617,17 @@ qplot(lambda, rmse_reg)</code></pre>
 <pre class="r"><code>rmse_reg[which.min(rmse_reg)]</code></pre>
 <pre><code>## [1] 0.8655521</code></pre>
 <p>In table:</p>
-<pre class="r"><code>rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Regularized Movie + User effect on prediction&quot;, RMSE =  rmse_reg[which.min(rmse_reg)])</code></pre>
+<pre class="r"><code>rmse_resTable &lt;- rmse_resTable %&gt;% add_row(method = &quot;Regularized Movie + User effect on prediction&quot;, RMSE =  rmse_reg[which.min(rmse_reg)])
+rmse_resTable</code></pre>
+<pre><code>## # A tibble: 6 x 2
+##   method                                         RMSE
+##   &lt;chr&gt;                                         &lt;dbl&gt;
+## 1 Predicting by average                         1.06 
+## 2 Movie effect on prediction                    0.944
+## 3 Users effect on prediction                    0.979
+## 4 Genres effect on prediction                   1.02 
+## 5 Movie + User effect on prediction             0.886
+## 6 Regularized Movie + User effect on prediction 0.866</code></pre>
 <p>Final model is used on the validation set to see how it performs.
 Final Root mean square error value is defined by:</p>
 <pre class="r"><code>l &lt;- 4.75
@@ -602,6 +651,12 @@ if(sum(is.na(pred_mov_usr_reg))) pred_mov_usr_reg[is.na(pred_mov_usr_reg)] &lt;-
 
 RMSE(validation$rating, pred_mov_usr_reg)</code></pre>
 <pre><code>## [1] 0.8648201</code></pre>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>The most impact was made by combining the movie effect and the user
+effect to minimize the root mean squared error. Genres proved helpful
+overall but the final model’s accuracy was only decreased by it.</p>
 </div>
 
 

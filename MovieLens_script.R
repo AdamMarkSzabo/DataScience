@@ -113,6 +113,7 @@ genres_table <- train_set %>% group_by(genres) %>%
 
 str(genres_table)
 
+# plotting top 20 result
 genres_table %>% arrange(desc(avg)) %>%
   head(.,20) %>%
   ggplot(aes(x = genres, y = avg)) + 
@@ -125,21 +126,10 @@ genres_table %>% arrange(desc(avg)) %>%
   geom_point()+ 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-
+# plotting last 20 result
 genres_effect <- train_set %>%  
   group_by(genres) %>% 
   summarise(b_g = mean(mean(rating) - mu_hat))
-
-# prediction model
-pred_genres <- test_set %>% 
-  group_by(movieId) %>%
-  left_join(genres_effect, "genres") %>% 
-  mutate(prediction = mu_hat + b_g) %>%
-  pull(prediction)
-if(sum(is.na(pred_genres))) pred_genres[is.na(pred_genres)] <- mu_hat
-
-rmse_gen <- RMSE(test_set$rating, pred_genres)
-rmse_resTable <- rmse_resTable %>% add_row(method = "Genres effect on prediction", RMSE =  rmse_gen)
 
 # genre + user combined
 genres_effect_bad <- train_set %>%  
@@ -159,6 +149,17 @@ if(sum(is.na(pred_genres2))) pred_genres2[is.na(pred_genres2)] <- mu_hat
 rmse_gen2 <- RMSE(test_set$rating,pred_genres2)
 rmse_gen2
 
+
+# prediction model genre effect alone
+pred_genres <- test_set %>% 
+  group_by(movieId) %>%
+  left_join(genres_effect, "genres") %>% 
+  mutate(prediction = mu_hat + b_g) %>%
+  pull(prediction)
+if(sum(is.na(pred_genres))) pred_genres[is.na(pred_genres)] <- mu_hat
+
+rmse_gen <- RMSE(test_set$rating, pred_genres)
+rmse_resTable <- rmse_resTable %>% add_row(method = "Genres effect on prediction", RMSE =  rmse_gen)
 
 ## Combining effects for the model
 
